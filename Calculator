@@ -1,0 +1,209 @@
+import tkinter as tk  # библиотека для создания графического интерфейса (окна, кнопки)
+from tkinter import messagebox  # модуль для всплывающих окон (ошибки)
+import math  # математические функции (sin, cos и т.д.)
+
+
+# ===== ФУНКЦИИ =====
+
+def calculate():
+    try:
+        # берём текст из поля ввода (строка, которую ввёл пользователь)
+        expression = entry.get()
+
+        # список разрешённых функций для eval (ограничиваем безопасность)
+        allowed_names = {
+            "sin": math.sin,  # синус
+            "cos": math.cos,  # косинус
+            "tan": math.tan,  # тангенс
+            "sqrt": math.sqrt,  # квадратный корень
+            "log": math.log10,  # логарифм (основание 10)
+            "ln": math.log,  # натуральный логарифм
+            "pi": math.pi,  # число π
+            "e": math.e,  # число e
+            "pow": pow  # степень (pow(2,3) = 😍
+        }
+
+        # eval вычисляет строку как код
+        # builtins = None отключает опасные встроенные функции
+        result = eval(expression, {"builtins": None}, allowed_names)
+
+        # обновляем текст результата (вывод на экран)
+        result_label.config(text="Result: " + str(result))
+
+        # сохраняем выражение и результат в файл history.txt
+        with open("history.txt", "a") as file:  # "a" = append (добавить в конец)
+            file.write(expression + " = " + str(result) + "\n")  # \n = новая строка
+
+    except Exception:
+        # если ошибка (неправильное выражение) — показываем окно
+        messagebox.showerror("Error", "Invalid Expression")
+
+
+def clear():
+    # удаляем ВСЁ из поля ввода
+    entry.delete(0, tk.END)  # от первого символа (0) до конца
+    # сбрасываем текст результата
+    result_label.config(text="Result:")
+
+
+def delete():
+    # получаем текущий текст
+    current = entry.get()
+    # очищаем поле полностью
+    entry.delete(0, tk.END)
+    # вставляем строку без последнего символа
+    entry.insert(0, current[:-1])  # [:-1] = всё кроме последнего символа
+
+
+def show_history():
+    try:
+        # открываем файл истории в режиме чтения
+        with open("history.txt", "r") as file:
+            history = file.read()  # читаем весь текст файла
+    except FileNotFoundError:
+        # если файла нет — выводим сообщение
+        history = "No history found."
+
+    # создаём новое окно (дочернее)
+    history_window = tk.Toplevel(root)
+    history_window.title("History")
+    history_window.configure(bg="#121212")
+
+    # создаём текстовое поле для вывода истории
+    text = tk.Text(
+        history_window,
+        width=40,
+        height=15,
+        bg="#121212",
+        fg="white",
+        font=("Consolas", 11),
+        bd=0
+    )
+    text.pack(padx=10, pady=10)
+
+    # вставляем историю в поле
+    text.insert(tk.END, history)
+
+
+def click(value):
+    # добавляем символ (value) в конец строки
+    entry.insert(tk.END, value)
+
+
+# ===== ОКНО =====
+
+root = tk.Tk()                                # создаём главное окно
+root.title("Scientific Calculator")            # название окна
+root.geometry("380x600")                       # размер окна (ширина x высота)
+root.configure(bg="#0f0f0f")                   # цвет фона
+root.resizable(False, False)                   # запрет изменения размера
+
+
+# ===== ПОЛЕ ВВОДА =====
+
+entry = tk.Entry(
+    root,
+    width=40,                                  # ширина поля
+    font=("Segoe UI", 18),                     # шрифт
+    bg="#1e1e1e",                              # фон
+    fg="white",                                # цвет текста
+    insertbackground="red",                    # цвет курсора
+    bd=0,                                      # без рамки
+    justify="right"                            # текст справа
+)
+entry.pack(pady=15, ipady=10, padx=10)         # размещение + внутренние отступы
+
+# ===== РЕЗУЛЬТАТ =====
+result_label = tk.Label(
+    root,
+    text="Result:",                            # начальный текст
+    font=("Segoe UI", 22, "bold"),             # шрифт и размер
+    bg="#0f0f0f",
+    fg="#00ffcc"                               # цвет текста
+)
+result_label.pack(pady=5)
+
+
+# ===== КОНТЕЙНЕР ДЛЯ КНОПОК =====
+
+frame = tk.Frame(root, bg="#0f0f0f")           # контейнер (Frame)
+frame.pack()
+
+
+# ===== СПИСОК КНОПОК =====
+
+buttons = [
+    '7','8','9','/','sin(',
+    '4','5','6','*','cos(',
+    '1','2','3','-','tan(',
+    '0','.','=','+','sqrt(',
+    '(',')','pi','log(','ln(',
+    'DEL'
+]
+row = 0   # номер строки (grid)
+col = 0   # номер колонки
+# функция возвращает стиль кнопки (словарь параметров)
+def style_button(btn):
+    return {
+        "text": btn,                           # текст на кнопке
+        "width": 5,                            # ширина
+        "height": 2,                           # высота
+        "font": ("Segoe UI", 11, "bold"),
+        "bd": 0,                               # без рамки
+        "activebackground": "#333",            # цвет при нажатии
+        "activeforeground": "white"
+    }
+
+
+# ===== СОЗДАНИЕ КНОПОК =====
+for btn in buttons:
+    # если кнопка "=" → выполняем вычисление
+    if btn == "=":
+        action = calculate
+        bg = "#00c853"                         # зелёный цвет
+    # если кнопка DEL → удаляем последний символ
+    elif btn == "DEL":
+        action = delete
+        bg = "#d32f2f"                         # красный цвет
+    else:
+        # обычные кнопки → вставляют символ
+        action = lambda x=btn: click(x)
+        bg = "#1f1f1f"
+    # создаём кнопку и размещаем её в таблице (grid)
+    tk.Button(
+        frame,
+        **style_button(btn),                   # применяем стиль
+        bg=bg,
+        fg="green",
+        command=action                         # функция при нажатии
+    ).grid(row=row, column=col, padx=2, pady=5)
+    col += 1  # переходим к следующей колонке
+    # если уже 5 кнопок в строке → переходим на новую строку
+    if col > 4:
+        col = 0
+        row += 1
+# ===== ДОПОЛНИТЕЛЬНЫЕ КНОПКИ =====
+# кнопка очистки
+tk.Button(
+    root,
+    width=10,
+    text="Clear",
+    command=clear,
+    font=("Segoe UI", 12, "bold"),
+    bg="#2962ff",
+    fg="blue",
+    bd=0
+).pack(pady=5)
+# кнопка истории
+tk.Button(
+    root,
+    width=10,
+    text="History",
+    command=show_history,
+    font=("Segoe UI", 12, "bold"),
+    bg="#6a1b9a",
+    fg="red",
+    bd=0
+).pack(pady=5)
+# ===== ЗАПУСК ПРОГРАММЫ =====
+root.mainloop()   # запускает главный цикл (ожидание действий пользователя)
